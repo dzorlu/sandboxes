@@ -54,7 +54,7 @@ def convert_task(task_path: Path, output_dir: Path):
 
     # 4. Create task.toml
     task_toml = {
-        "info": {
+        "metadata": {
             "name": task_name,
             "author_name": data.get("author_name"),
             "author_email": data.get("author_email"),
