@@ -32,6 +32,15 @@ class ModalEnvironment(BaseEnvironment):
 
     def _validate_definition(self):
         if not self._environment_definition_path.exists():
+            # Debug: dump contents of environment_dir to aid diagnosis
+            try:
+                contents = [str(p) for p in self.environment_dir.rglob("*")]
+            except Exception as e:
+                contents = [f"<error listing environment_dir: {e}>"]
+            print(
+                f"[modal] Dockerfile not found at {self._environment_definition_path}. "
+                f"environment_dir={self.environment_dir}. Contents: {contents}"
+            )
             raise FileNotFoundError(
                 f"{self._environment_definition_path} not found. Please ensure the "
                 "file exists."
