@@ -17,16 +17,18 @@ def convert_task(task_path: Path, output_dir: Path):
     new_task_path.mkdir(exist_ok=True)
 
     # 1. Copy compatible directories and handle environment files
-    
-    # Create the 'environment' directory in the new structure
-    env_dir = new_task_path / "environment"
-    env_dir.mkdir(exist_ok=True)
-    
-    # Copy Dockerfile and docker-compose.yaml into the new 'environment' directory
-    for env_file in ["Dockerfile", "docker-compose.yaml"]:
-        src_file = task_path / env_file
-        if src_file.exists():
-            shutil.copy(src_file, env_dir / env_file)
+    # Prefer copying the entire source 'environment/' directory if it exists.
+    src_env_dir = task_path / "environment"
+    dst_env_dir = new_task_path / "environment"
+    if src_env_dir.exists():
+        shutil.copytree(src_env_dir, dst_env_dir, dirs_exist_ok=True)
+    else:
+        # Fallback: create env dir and try copying top-level Docker files
+        dst_env_dir.mkdir(exist_ok=True)
+        for env_file in ["Dockerfile", "docker-compose.yaml"]:
+            src_file = task_path / env_file
+            if src_file.exists():
+                shutil.copy(src_file, dst_env_dir / env_file)
 
     # Copy other directories as-is
     for dir_name in ["solution", "tests"]:
