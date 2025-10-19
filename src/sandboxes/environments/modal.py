@@ -76,9 +76,9 @@ class ModalEnvironment(BaseEnvironment):
             "[modal] Warning: Installing Python 3.13 into the environment image. "
             "This may take a few minutes."
         )
-        # Use the environment directory as the Docker build context so COPY can see aux files
+        # Build from Dockerfile; Modal will use the Dockerfile's directory as context
         self._image = Image.from_dockerfile(
-            self.environment_dir,
+            self._environment_definition_path,
             add_python="3.13",
         )
 
