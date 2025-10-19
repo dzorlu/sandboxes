@@ -309,10 +309,13 @@ class Trial:
         )
 
         try:
+            print(f"Setting up environment for {self.config.trial_name}")
             await self._setup_environment()
+            print(f"Setting up agent for {self.config.trial_name}")
             await self._setup_agent()
 
             try:
+                print(f"Executing agent for {self.config.trial_name}")
                 await self._execute_agent()
 
                 await self._maybe_download_logs(
@@ -322,6 +325,7 @@ class Trial:
                 self._maybe_populate_agent_context()
 
             except AgentTimeoutError as e:
+                print(f"Agent timeout error for {self.config.trial_name}")
                 self._result.exception_info = ExceptionInfo.from_exception(e)
                 self._trial_paths.exception_message_path.write_text(
                     traceback.format_exc()
@@ -332,6 +336,7 @@ class Trial:
                 )
                 self._maybe_populate_agent_context()
 
+            print(f"Running verification for {self.config.trial_name}")
             await self._run_verification()
 
         except asyncio.CancelledError as e:
