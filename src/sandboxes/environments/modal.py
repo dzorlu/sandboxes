@@ -71,12 +71,14 @@ class ModalEnvironment(BaseEnvironment):
 
     async def start(self, force_build: bool):
         """Starts the environment and optionally forces a build."""
+        self._validate_definition()
         print(
             "[modal] Warning: Installing Python 3.13 into the environment image. "
             "This may take a few minutes."
         )
+        # Use the environment directory as the Docker build context so COPY can see aux files
         self._image = Image.from_dockerfile(
-            self._environment_definition_path,
+            self.environment_dir,
             add_python="3.13",
         )
 
