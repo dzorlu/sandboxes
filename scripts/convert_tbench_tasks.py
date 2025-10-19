@@ -71,6 +71,22 @@ def convert_task(task_path: Path, output_dir: Path) -> bool:
                 if src_file.exists():
                     shutil.copy(src_file, dst_env_dir / env_file)
 
+        # 5b. Copy any auxiliary files/dirs from task roo
+        # t into environment context
+        # Exclude directories/files we already handle or that do not belong in env
+        excluded_names = {"environment", "solution", "tests", "task.yaml"}
+        for entry in task_path.iterdir():
+            if entry.name in excluded_names:
+                continue
+            # Skip Dockerfile/docker-compose at root if we've already handled them above
+            if entry.name in {"Dockerfile", "docker-compose.yaml"}:
+                continue
+            target = dst_env_dir / entry.name
+            if entry.is_dir():
+                shutil.copytree(entry, target, dirs_exist_ok=True)
+            else:
+                shutil.copy(entry, target)
+
         # 6. Copy other directories as-is
         for dir_name in ["solution", "tests"]:
             src_dir = task_path / dir_name
