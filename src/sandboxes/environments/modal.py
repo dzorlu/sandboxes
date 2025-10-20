@@ -79,6 +79,7 @@ class ModalEnvironment(BaseEnvironment):
         # Build from Dockerfile; Modal will use the Dockerfile's directory as context
         self._image = Image.from_dockerfile(
             self._environment_definition_path,
+            context_dir=str(self.environment_dir),
             add_python="3.13",
         )
 
