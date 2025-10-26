@@ -1,4 +1,5 @@
 import asyncio
+import os
 import shlex
 from pathlib import Path
 from uuid import uuid4
@@ -87,10 +88,11 @@ class DaytonaEnvironment(BaseEnvironment):
     ):
         if not self._daytona:
             raise RuntimeError("Daytona not found. This should never happen.")
-
+        print(f"Creating sandbox with params: {params}")
         self._sandbox = await self._daytona.create(
             params=params, timeout=round(self.task_env_config.build_timeout_sec)
         )
+        print(f"Sandbox created: {self._sandbox}")
 
     async def start(self, force_build: bool):
         resources = Resources(
@@ -104,9 +106,11 @@ class DaytonaEnvironment(BaseEnvironment):
 
         if not force_build:
             try:
+                print(f"Getting snapshot {self.environment_dir.parent.name}")
                 snapshot = await self._daytona.snapshot.get(
                     self.environment_dir.parent.name
                 )
+                print(f"Snapshot: {snapshot}")
                 if snapshot.state != SnapshotState.ACTIVE:
                     force_build = True
             except Exception as e:
@@ -117,19 +121,22 @@ class DaytonaEnvironment(BaseEnvironment):
             image = Image.from_dockerfile(self._environment_definition_path)
 
             params = CreateSandboxFromImageParams(
+                name=f"{self.environment_name}-{self.session_id}",
                 image=image,
                 auto_delete_interval=0,
                 resources=resources,
             )
         else:
             params = CreateSandboxFromSnapshotParams(
+                name=f"{self.environment_name}-{self.session_id}",
                 snapshot=self.environment_dir.parent.name,
             )
 
         await self._create_sandbox(params=params)
 
-        await self.exec(f"mkdir -p {EnvironmentPaths.agent_dir}")
-        await self.exec(f"mkdir -p {EnvironmentPaths.verifier_dir}")
+        await self._sandbox.fs.create_folder(EnvironmentPaths.agent_dir.as_posix(), "755")
+        await self._sandbox.fs.create_folder(EnvironmentPaths.verifier_dir.as_posix(), "755")
+        print(f"Created directories {EnvironmentPaths.agent_dir} and {EnvironmentPaths.verifier_dir}")
 
     @retry(
         stop=stop_after_attempt(2),
@@ -299,8 +306,7 @@ class DaytonaEnvironment(BaseEnvironment):
         session_id = str(uuid4())
         try:
             await self._sandbox.process.create_session(session_id)
-
-            command = f"bash -ic {shlex.quote(command)}"
+            command = f"bash -c {shlex.quote(command)}"
 
             if env:
                 for key, value in env.items():
@@ -308,7 +314,7 @@ class DaytonaEnvironment(BaseEnvironment):
 
             if timeout_sec:
                 command = f"timeout {timeout_sec} {command}"
-
+            print("***")
             response = await self._sandbox.process.execute_session_command(
                 session_id,
                 SessionExecuteRequest(
@@ -317,12 +323,12 @@ class DaytonaEnvironment(BaseEnvironment):
                 ),
                 timeout=timeout_sec,
             )
-
+            print(f"Response: {response}")
             if response.cmd_id is None:
                 raise RuntimeError("Cannot find command ID.")
 
             result = await self._poll_response(session_id, response.cmd_id)
-
+            print(f"Result: {result}")
         finally:
             try:
                 await self._sandbox.process.delete_session(session_id)

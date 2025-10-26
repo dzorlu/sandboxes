@@ -61,9 +61,11 @@ class TmuxSession:
         Install both tmux and asciinema in a single operation for efficiency.
         """
         # Check what's already installed
+        print("Attempting tmux installation"    )
         tmux_result = await self.environment.exec(command="tmux -V")
         asciinema_result = await self.environment.exec(command="asciinema --version")
-
+        print(f"Tmux result: {tmux_result}")
+        print(f"Asciinema result: {asciinema_result}")
         tmux_installed = tmux_result.return_code == 0
         asciinema_installed = asciinema_result.return_code == 0
 
@@ -78,7 +80,7 @@ class TmuxSession:
             tools_needed.append("asciinema")
 
         self._logger.info(f"Installing: {', '.join(tools_needed)}")
-
+        print(f"Installing: {', '.join(tools_needed)}")
         # Detect system and package manager
         system_info = await self._detect_system_info()
 
@@ -341,6 +343,7 @@ class TmuxSession:
 
     async def start(self) -> None:
         await self._attempt_tmux_installation()
+        print(f"Starting tmux session...")
         start_session_result = await self.environment.exec(
             command=self._tmux_start_session
         )

@@ -78,7 +78,7 @@ class Trial:
     def __init__(self, config: TrialConfig):
         self.config = config
         self.job_id = config.job_id
-        self._are_agent_logs_downloaded = False
+        self._downloaded_dirs: set[str] = set()
 
         self._hooks: dict[TrialEvent, list[Callable[[], None]]] = {
             event: [] for event in TrialEvent
@@ -276,7 +276,11 @@ class Trial:
             hook()
 
     async def _maybe_download_logs(self, source_dir: str, target_dir: Path) -> None:
-        if self._environment.is_mounted or self._are_agent_logs_downloaded:
+        if self._environment.is_mounted:
+            return
+        
+        # Skip if we've already downloaded this specific directory
+        if source_dir in self._downloaded_dirs:
             return
 
         try:
@@ -284,10 +288,9 @@ class Trial:
                 source_dir=source_dir,
                 target_dir=target_dir,
             )
+            self._downloaded_dirs.add(source_dir)
         except Exception:
             print(f"Failed to download logs to {target_dir}")
-
-        self._are_agent_logs_downloaded = True
 
     def _maybe_populate_agent_context(self) -> None:
         if (
@@ -317,11 +320,13 @@ class Trial:
 
         try:
             await self._setup_environment()
+            print("Environment setup complete")
             await self._setup_agent()
+            print("Agent setup complete")
 
             try:
                 await self._execute_agent()
-
+                print("Agent execution complete")
                 await self._maybe_download_logs(
                     source_dir=EnvironmentPaths.agent_dir.as_posix(),
                     target_dir=self._trial_paths.agent_dir,
@@ -340,6 +345,12 @@ class Trial:
                 self._maybe_populate_agent_context()
 
             await self._run_verification()
+            
+            # Download verifier logs (including artifacts like tarballs created by test scripts)
+            await self._maybe_download_logs(
+                source_dir=EnvironmentPaths.verifier_dir.as_posix(),
+                target_dir=self._trial_paths.verifier_dir,
+            )
 
         except asyncio.CancelledError as e:
             if self._result.exception_info is None:
